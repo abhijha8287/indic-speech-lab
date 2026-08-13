@@ -122,6 +122,11 @@ indic-speech-lab/
 └── .gitignore
 ```
 
+```bash
+source .venv/bin/activate
+streamlit run app.py
+```
+
 ## Future Improvements
 
 - Additional Indian languages: Tamil, Telugu, Bengali, Marathi, Hinglish
