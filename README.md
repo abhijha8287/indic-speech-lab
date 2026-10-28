@@ -1,141 +1,61 @@
 # IndicSpeechLab
 
-IndicSpeechLab is a lightweight ASR evaluation platform for measuring speech recognition quality and inference performance on Indian-language audio.
+A Streamlit tool that transcribes Hindi or English audio with Whisper and scores the result with WER, CER and real-time factor.
 
-## Problem
+## Why this exists
+Evaluating speech recognition for Indian languages usually means stitching together separate scripts for transcription, text cleanup and scoring. This puts the whole loop in one place, running locally.
 
-Evaluating ASR (Automatic Speech Recognition) quality for Indian languages usually requires stitching together separate scripts for transcription, error-rate calculation, and result tracking. IndicSpeechLab bundles this into a single local tool: upload audio, transcribe it with Whisper, compare against a reference transcript, and get standard ASR metrics — all from one dashboard.
+## What it does
+- Accepts `.wav`, `.mp3`, `.m4a`, `.flac` or `.ogg` uploads
+- Transcribes locally with `faster-whisper` (tiny, base or small model) in Hindi or English
+- Normalises text without transliterating, so Devanagari stays intact
+- Computes WER and CER against an optional reference transcript (shown as N/A without one)
+- Measures processing time and real-time factor (processing time / audio length)
+- Saves every evaluation to CSV, viewable and downloadable in the app
 
-## Features
-
-- Upload an audio file (`.wav`, `.mp3`, `.m4a`, `.flac`, `.ogg`)
-- Transcribe with an open-source Whisper model (via `faster-whisper`), running locally
-- Select language: Hindi or English
-- Optionally supply a ground-truth reference transcript
-- Automatic calculation of **Word Error Rate (WER)** and **Character Error Rate (CER)**
-- Inference timing and **Real-Time Factor (RTF)**
-- Results persisted to CSV, viewable and downloadable from the dashboard
-- Hindi-safe text normalization (no transliteration, Devanagari preserved)
-
-## Architecture
-
+## Project structure
 ```
-Audio
- ↓
-Whisper ASR
- ↓
-Transcription
- ↓
-Text Normalization
- ↓
-WER / CER
- ↓
-Latency / RTF
- ↓
-CSV Results
- ↓
-Streamlit Dashboard
+indic-speech-lab/
+├── src/
+│   ├── asr.py        Whisper loading and transcription
+│   ├── audio.py      Audio decoding and duration
+│   ├── metrics.py    Normalisation, WER, CER, RTF
+│   └── storage.py    CSV results storage
+├── tests/            Audio and metric tests
+├── data/results/     Saved evaluation results
+├── samples/          Place test audio here
+├── app.py            Streamlit app
+├── packages.txt      System packages (ffmpeg)
+├── .env.example      Model and device settings
+└── requirements.txt  Python dependencies
 ```
 
-## Tech Stack
-
-- **Python 3.10+**
-- [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper) — CTranslate2-based Whisper inference (CPU int8 by default, CUDA if available)
-- **Streamlit** — dashboard UI
-- **jiwer** — WER/CER calculation
-- **pandas** — CSV result storage and display
-- **librosa** / **soundfile** — audio duration and validation
-- **numpy**
-- **FFmpeg** — converts compressed uploads (M4A, MP3, FLAC, OGG) to 16kHz mono PCM WAV before transcription
-
-## Installation
-
-Install FFmpeg first (required to decode M4A, MP3, FLAC, and OGG uploads):
-
+## Getting started
+Requirements: Python 3.10+, FFmpeg.
 ```bash
-brew install ffmpeg
-```
-
-Then set up the Python environment:
-
-```bash
+git clone https://github.com/abhijha8287/indic-speech-lab.git
 cd indic-speech-lab
-python3 -m venv .venv
-source .venv/bin/activate
+brew install ffmpeg            # or: sudo apt install ffmpeg
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-```
-
-Edit `.env` to change the default model:
-
-```
-WHISPER_MODEL=small   # tiny | base | small
-DEVICE=auto           # auto | cpu | cuda
-```
-
-## Usage
-
-```bash
 streamlit run app.py
 ```
+Pick a model and language in the sidebar, upload audio, optionally paste a reference transcript, then click **Transcribe & Evaluate**.
 
-1. Pick a Whisper model and language in the sidebar.
-2. Upload an audio file.
-3. (Optional) Paste a reference transcript.
-4. Click **Transcribe & Evaluate**.
-5. Review the transcription, WER/CER, processing time, and RTF.
-6. Browse or download past evaluations from the **Previous Evaluations** table.
+## Configuration
+| Variable | Purpose |
+|:--|:--|
+| `WHISPER_MODEL` | `tiny`, `base` or `small` |
+| `DEVICE` | Where to run Whisper (default `auto`) |
 
-Run tests:
-
+## Tests
 ```bash
 pytest
 ```
 
-## Metrics
+## Tech stack
+Python, faster-whisper, jiwer, librosa, soundfile, FFmpeg, pandas, Streamlit, pytest
 
-- **WER (Word Error Rate)** — the fraction of words in the reference that were substituted, deleted, or inserted incorrectly in the hypothesis. Lower is better.
-- **CER (Character Error Rate)** — the same idea at the character level. More forgiving of minor spelling/segmentation differences than WER, useful for morphologically rich languages.
-- **RTF (Real-Time Factor)** — `processing_time / audio_duration`. An RTF below 1.0 means the system transcribed the audio faster than real time (e.g. RTF = 0.3 means a 10-second clip took 3 seconds to transcribe).
-
-If no reference transcript is provided, WER and CER are reported as `N/A` rather than a misleading zero.
-
-## Project Structure
-
-```
-indic-speech-lab/
-│
-├── app.py                   # Streamlit dashboard
-│
-├── src/
-│   ├── asr.py                # ASRService: faster-whisper wrapper, lazy model loading
-│   ├── metrics.py             # WER/CER calculation, text normalization
-│   ├── audio.py                # Audio validation, FFmpeg conversion, duration extraction
-│   └── storage.py              # CSV-backed result storage
-│
-├── data/results/               # evaluations.csv (gitignored)
-├── samples/                     # sample audio files (not committed)
-├── tests/                       # pytest test suite
-│
-├── requirements.txt
-├── .env.example
-└── .gitignore
-```
-
-```bash
-source .venv/bin/activate
-streamlit run app.py
-```
-
-## Future Improvements
-
-- Additional Indian languages: Tamil, Telugu, Bengali, Marathi, Hinglish
-- Multiple ASR model backends (Hugging Face Transformers, other Whisper variants)
-- Batch evaluation and multi-file comparison
-- Noise robustness experiments and SNR-based evaluation
-- Voice activity detection (VAD) and silence removal preprocessing
-- Charts and trend visualization across evaluation history
-- GPU-accelerated inference tuning
-- PostgreSQL-backed storage (storage.py is already isolated for this swap)
-- FastAPI backend for programmatic access
-- Docker packaging and cloud deployment
+## Notes
+Planned: more Indian languages (Tamil, Telugu, Bengali, Marathi, Hinglish), more ASR backends, batch evaluation, noise and SNR tests, VAD preprocessing, charts over history, PostgreSQL storage, a FastAPI backend and Docker packaging.
